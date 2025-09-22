@@ -1,0 +1,5 @@
+pandas
+spacy
+scikit-learn
+tqdm
+python-docx

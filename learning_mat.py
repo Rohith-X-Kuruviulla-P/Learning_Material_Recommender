@@ -75,7 +75,7 @@ def process_new_text(text):
     doc = nlp(text)
     return " ".join([token.lemma_ for token in doc if not token.is_punct and not token.is_stop])
 
-
+#Load the BAWE Dataset
 BAWE_ROOT_PATH = r'./BAWE_dataset'
 
 corpus_df = load_bawe_corpus(BAWE_ROOT_PATH)
@@ -107,4 +107,5 @@ if not corpus_df.empty:
     print("\n--- Top 5 Recommended BAWE Essays ---")
     print(recommendations[['id', 'discipline', 'level', 'similarity_score']].head(5).to_string(index=False))
 else:
+
     print("\nCould not generate recommendations because the corpus failed to load.")

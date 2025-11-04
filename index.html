@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BAWE Essay Recommender</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            background-color: #f4f7f6;
+            color: #333;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        h1, h2 {
+            color: #2c3e50;
+        }
+        .container {
+            background: #ffffff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box; /* Important for padding to work with width: 100% */
+        }
+        input[type="file"] {
+            display: block;
+            margin-bottom: 10px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        #results-container {
+            margin-top: 20px;
+        }
+        #status-message {
+            font-style: italic;
+            color: #555;
+            margin-bottom: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            border: 1px solid #dfe6e9;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #ecf0f1;
+            color: #34495e;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>BAWE Essay Recommender</h1>
+    <p>Find similar essays from the BAWE corpus.</p>
+
+    <div class="container">
+        <h2>Analyze by Text</h2>
+        <form id="text-form">
+            <label for="text-input">Paste your essay text here:</label>
+            <textarea id="text-input" rows="10" placeholder="Enter text..."></textarea>
+            <button type="submit">Analyze Text</button>
+        </form>
+    </div>
+
+    <div class="container">
+        <h2>Analyze by Document (.docx)</h2>
+        <form id="doc-form">
+            <label for="doc-input">Upload your .docx file:</label>
+            <input type="file" id="doc-input" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+            <button type="submit">Analyze Document</button>
+        </form>
+    </div>
+
+    <div class="container" id="results-container">
+        <h2>Results</h2>
+        <div id="status-message"></div>
+        <div id="results-output">
+            <p>Your recommendations will appear here.</p>
+        </div>
+    </div>
+
+    <script>
+        // Set the base URL for your FastAPI server
+        const API_BASE_URL = "http://127.0.0.1:8000";
+
+        // Get elements from the DOM
+        const textForm = document.getElementById('text-form');
+        const textInput = document.getElementById('text-input');
+        
+        const docForm = document.getElementById('doc-form');
+        const docInput = document.getElementById('doc-input');
+        
+        const statusMessage = document.getElementById('status-message');
+        const resultsOutput = document.getElementById('results-output');
+
+        // --- Event Listener for Text Form ---
+        textForm.addEventListener('submit', async (event) => {
+            event.preventDefault(); // Stop the form from submitting normally
+            
+            const text = textInput.value;
+            if (!text.trim()) {
+                alert('Please enter some text to analyze.');
+                return;
+            }
+
+            statusMessage.textContent = 'Analyzing text... This may take a moment.';
+            resultsOutput.innerHTML = '';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/analyze-text/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text: text })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                displayResults(data);
+
+            } catch (error) {
+                displayError(error);
+            }
+        });
+
+        // --- Event Listener for Document Form ---
+        docForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const file = docInput.files[0];
+            if (!file) {
+                alert('Please select a .docx file to upload.');
+                return;
+            }
+
+            statusMessage.textContent = 'Uploading and analyzing document...';
+            resultsOutput.innerHTML = '';
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/analyze-document/`, {
+                    method: 'POST',
+                    body: formData
+                    // Note: Don't set 'Content-Type' for FormData. 
+                    // The browser sets it automatically with the correct boundary.
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || `HTTP error! Status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                displayResults(data);
+
+            } catch (error) {
+                displayError(error);
+            }
+        });
+
+        // --- Helper Function to Display Results as a Table ---
+        function displayResults(data) {
+            statusMessage.textContent = 'Analysis complete. Top 5 recommendations:';
+
+            if (!data || data.length === 0) {
+                resultsOutput.innerHTML = '<p>No recommendations found.</p>';
+                return;
+            }
+
+            // Create a table
+            let tableHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Essay ID</th>
+                            <th>Discipline</th>
+                            <th>Level</th>
+                            <th>Similarity Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            // Populate table rows
+            data.forEach(item => {
+                tableHTML += `
+                    <tr>
+                        <td>${item.id}</td>
+                        <td>${item.discipline}</td>
+                        <td>${item.level}</td>
+                        <td>${item.similarity_score.toFixed(4)}</td>
+                    </tr>
+                `;
+            });
+
+            tableHTML += '</tbody></table>';
+            resultsOutput.innerHTML = tableHTML;
+        }
+
+        // --- Helper Function to Display Errors ---
+        function displayError(error) {
+            console.error('API Error:', error);
+            statusMessage.textContent = 'An error occurred.';
+            resultsOutput.innerHTML = `<p style="color: red;"><strong>Error:</strong> ${error.message}</p>`;
+        }
+
+    </script>
+</body>
+</html>

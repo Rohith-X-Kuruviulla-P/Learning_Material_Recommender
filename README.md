@@ -4,6 +4,8 @@ BAWE-based Essay Recommendation System
 
 This project builds a content-based recommendation system for academic essays using the British Academic Written English (BAWE) corpus. The system compares a user-provided document (e.g., a .docx essay) or free-form text with essays in the BAWE dataset and recommends the most similar essays.
 
+Dataset link: https://www.coventry.ac.uk/research/research-directories/current-projects/2015/british-academic-written-english-corpus-bawe/search-the-bawe-corpus/
+
 Key Features
 
 Document Input
